@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel BTS</title>
+    <style>
+        :root{
+            --bg:#0e2a57;
+            --bg2:#153769;
+            --card:#1d447e;
+            --text:#eaf2ff;
+            --muted:#a9c0ea;
+            --accent:#29c77f;
+            --danger:#e74c3c;
+            --shadow:0 12px 30px rgba(0,0,0,.25);
+            --radius:18px;
+        }
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{
+            margin:0;
+            font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+            color:var(--text);
+            background: radial-gradient(1200px 600px at 20% -10%, #1a3c78 0%, #0c2348 60%), linear-gradient(160deg,var(--bg),var(--bg2));
+            background-attachment: fixed;
+        }
+
+        /* ====== LOGIN ====== */
+        .login-overlay{
+            position:fixed; inset:0;
+            display:flex; align-items:center; justify-content:center;
+            z-index:1000;
+        }
+        .login-box{
+            background: rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.08);
+            border-radius:24px;
+            padding:40px 36px;
+            width:100%; max-width:400px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(12px);
+            text-align:center;
+        }
+        .login-box h2{margin:0 0 8px; font-size:26px; font-weight:800}
+        .login-box p{margin:0 0 28px; color:var(--muted); font-size:14px}
+        .login-box input{
+            display:block; width:100%;
+            padding:14px 16px; margin-bottom:14px;
+            border:1px solid rgba(255,255,255,.2);
+            background: rgba(255,255,255,.08);
+            color:var(--text);
+            border-radius:14px;
+            font-size:15px; font-weight:500;
+            outline:none;
+        }
+        .login-box input::placeholder{color:rgba(255,255,255,.4)}
+        .login-box input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(41,199,127,.15)}
+        .login-box button{
+            width:100%; padding:14px;
+            background:#30d087; color:#0b2a4a;
+            border:none; border-radius:14px;
+            font-size:16px; font-weight:700;
+            cursor:pointer; margin-top:6px;
+            transition: opacity .2s;
+        }
+        .login-box button:hover{opacity:.9}
+        .login-error{
+            color:#ff6b6b; font-size:13px; margin-top:12px;
+            display:none;
+        }
+
+        /* ====== PAINEL ====== */
+        .app{display:none}
+        .wrap{max-width:1100px; margin:28px auto; padding:0 16px}
+        .topbar{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:16px;
+            background: rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.08);
+            padding:18px 20px;
+            border-radius:20px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+        }
+        .title{font-size:28px; font-weight:800; letter-spacing:.2px}
+        .subtitle{font-size:12px; color:var(--muted)}
+        .actions{display:flex; gap:10px}
+        .btn{border:none; border-radius:14px; padding:10px 14px; font-weight:700; cursor:pointer; color:#0b2a4a}
+        .btn.green{background:#30d087}
+        .btn.red{background:#ff6b6b}
+        .grid{display:grid; grid-template-columns: repeat(12, 1fr); gap:18px; margin:24px 0}
+        .card{
+            grid-column: span 3;
+            background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+            border:1px solid rgba(255,255,255,.08);
+            border-radius:var(--radius);
+            padding:22px;
+            box-shadow: var(--shadow)
+        }
+        .card h4{margin:0 0 8px; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em}
+        .value{font-size:28px; font-weight:900}
+        @media (max-width: 980px){
+            .card{grid-column: span 6}
+        }
+        @media (max-width: 640px){
+            .card{grid-column: span 12}
+            .title{font-size:20px}
+            .wrap{margin:16px auto; padding:0 12px}
+            .topbar{padding:14px 16px; flex-direction:column; gap:12px; text-align:center}
+            .actions{justify-content:center; flex-wrap:wrap}
+            .value{font-size:24px}
+            .card{padding:18px}
+            .grid{gap:14px; margin:18px 0}
+            .login-box{padding:28px 24px; margin:0 16px}
+        }
+        @media (max-width: 480px){
+            .title{font-size:18px}
+            .value{font-size:20px}
+            .card{padding:14px}
+            .topbar{padding:12px 14px}
+            .btn{padding:8px 12px; font-size:14px}
+        }
+        .section{
+            background: rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.08);
+            padding:18px;
+            border-radius:20px;
+            box-shadow: var(--shadow)
+        }
+        .section h3{margin:6px 0 14px}
+        .filters{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+        select, .chip, .search{
+            border:1px solid rgba(255,255,255,.2);
+            background: rgba(255,255,255,.08);
+            color:var(--text);
+            border-radius:12px;
+            padding:10px 12px;
+            font-weight:600
+        }
+        .chip.active{background:#1a824f}
+        .search{min-width:220px}
+        .list{margin-top:14px}
+        .row{
+            display:grid;
+            grid-template-columns: 140px 1fr 160px;
+            align-items:center;
+            gap:14px;
+            padding:14px 16px;
+            border-bottom:1px solid rgba(255,255,255,.08)
+        }
+        @media (max-width: 640px){
+            .filters{gap:8px}
+            .search{min-width:180px; font-size:14px}
+            .chip, select{padding:8px 10px; font-size:14px}
+            .row{grid-template-columns: 120px 1fr 140px; gap:10px; padding:12px 14px}
+            .section{padding:14px}
+        }
+        @media (max-width: 480px){
+            .search{min-width:140px}
+            .row{grid-template-columns: 100px 1fr 120px; gap:8px; padding:10px 12px}
+            .row .kind{font-size:11px}
+            .row .amount{font-size:14px}
+        }
+        .row:hover{background: rgba(255,255,255,.04)}
+        .row .kind{font-size:12px; color:#c7d8ff; text-transform:uppercase; letter-spacing:.08em}
+        .row .amount{justify-self:end; font-weight:900; color:#6dff9b}
+        .note{color:#c6d2ec; font-size:12px; margin-top:10px}
+        footer{opacity:.8; text-align:center; font-size:12px; padding:30px 0 10px; color:#b8c7e8}
+        .user-selector{margin: 16px 0}
+        .user-dropdown{position: relative; display: inline-block; min-width: 280px}
+        .user-dropdown select{
+            width:100%; padding:12px 16px;
+            background: rgba(255,255,255,.08);
+            border:1px solid rgba(255,255,255,.2);
+            border-radius:12px;
+            color:var(--text); font-size:14px; font-weight:600;
+            cursor:pointer; appearance:none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23eaf2ff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+        .user-dropdown select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(41,199,127,.1)}
+        @media (max-width: 640px){
+            .user-dropdown{min-width:100%}
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN -->
+    <div class="login-overlay" id="loginScreen">
+        <div class="login-box">
+            <h2>Painel BTS</h2>
+            <p>Acesse sua conta para continuar</p>
+            <form id="loginForm">
+                <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="email" required>
+                <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password" required>
+                <button type="submit">Entrar</button>
+            </form>
+            <div class="login-error" id="loginError">E-mail ou senha incorretos.</div>
+        </div>
+    </div>
+
+    <!-- PAINEL -->
+    <div class="app" id="appScreen">
+        <div class="wrap">
+            <div class="topbar">
+                <div>
+                    <div class="title">Painel BTS</div>
+                    <div class="subtitle">Atualizado — <span id="lastUpdate">Carregando...</span></div>
+                </div>
+                <div class="actions">
+                    <button class="btn green" id="btnRefresh">Atualizar</button>
+                    <button class="btn red" id="btnExit">Sair</button>
+                </div>
+            </div>
+
+            <div class="user-selector">
+                <h3 style="margin: 0 0 12px 0; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em;">Conta</h3>
+                <div class="user-dropdown">
+                    <select id="userSelect">
+                        <option value="andre">André Lamounier Costa e Silva</option>
+                        <option value="lindaura">Lindaura Lamounier Costa e Silva</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card"><h4>Valor Total</h4><div class="value" id="cardTotal">--</div></div>
+                <div class="card"><h4>Rendimento Total</h4><div class="value" id="cardRendimentoTotal">--</div></div>
+                <div class="card"><h4>Saldo CDB</h4><div class="value" id="cardCDB">--</div></div>
+                <div class="card"><h4>Rendimento CDB</h4><div class="value" id="cardCDBRend">--</div></div>
+                <div class="card"><h4>Saldo CDI</h4><div class="value" id="cardCDI">--</div></div>
+                <div class="card"><h4>Rendimento CDI</h4><div class="value" id="cardCDIRend">--</div></div>
+            </div>
+
+            <div class="section">
+                <h3>Extrato</h3>
+                <div class="filters">
+                    <select id="tipo">
+                        <option value="todos">Todos os tipos</option>
+                        <option value="deposito">Depósitos</option>
+                        <option value="rendCDB">Rendimento CDB</option>
+                        <option value="rendCDI">Rendimento CDI</option>
+                    </select>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="chip active" data-range="all">Tudo</div>
+                        <div class="chip" data-range="30">Últimos 30 dias</div>
+                        <div class="chip" data-range="90">Últimos 90 dias</div>
+                    </div>
+                    <input type="text" class="search" id="busca" placeholder="Buscar...">
+                </div>
+                <div class="list"><div id="extrato"></div></div>
+            </div>
+
+            <footer><p>&copy; 2025 BTS Dashboard. Todos os direitos reservados.</p></footer>
+        </div>
+    </div>
+
+    <script>
+        // ====== AUTH ======
+        const VALID_EMAIL = 'lamounier16@gmail.com';
+        const VALID_PASS = 'helilamounier16';
+
+        function checkSession(){
+            return sessionStorage.getItem('bts_auth') === 'true';
+        }
+        function showApp(){
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appScreen').style.display = 'block';
+            initApp();
+        }
+        function showLogin(){
+            sessionStorage.removeItem('bts_auth');
+            document.getElementById('appScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', function(e){
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+            const pass = document.getElementById('loginPassword').value;
+            if (email === VALID_EMAIL && pass === VALID_PASS){
+                sessionStorage.setItem('bts_auth','true');
+                document.getElementById('loginError').style.display = 'none';
+                showApp();
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        });
+
+        if (checkSession()) showApp();
+
+        // ====== APP ======
+        function initApp(){
+            const BASE_TAXA_DIARIA = 0.0002381;
+            let TAXA_DIARIA = BASE_TAXA_DIARIA;
+            const TIMEZONE = 'America/Sao_Paulo';
+
+            const CAL_INCLUDE_TODAY = false;
+            const CAL_INTEREST_ON_DEPOSIT_DAY = true;
+            const CAL_ROUND_DAILY = true;
+            const CDB_FIRST_DEPOSIT_ACCRUES_ONLY = true;
+            const CDI_PAUSE = { start: '2025-02-19', end: '2025-07-10' };
+
+            const depositoCDI = { data: '2024-09-02', valor: 213338.40, detalhe: 'Transferência RB' };
+
+            const depositosCDB = [
+                { data: '2022-05-17', valor: 100000.00, detalhe: 'Transferência CEX' },
+                { data: '2022-05-18', valor: 70000.00, detalhe: 'Transferência CEX' },
+                { data: '2022-05-18', valor: 8000.00, detalhe: 'Transferência CEX' },
+                { data: '2023-04-12', valor: 100000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-04-14', valor: 2000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-04-17', valor: 13000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-05-31', valor: 15000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-06-01', valor: 10000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-06-02', valor: 5000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-06-06', valor: 50000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-07-05', valor: 25000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-07-06', valor: 10000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-07-07', valor: 35000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-07-10', valor: 1000.00, detalhe: 'Recebimento Casa Sete Lagoas' },
+                { data: '2023-07-10', valor: 58000.00, detalhe: 'Transferência CEX' }
+            ];
+
+            const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v);
+            const fmtDate = d => new Date(d).toLocaleDateString('pt-BR',{ timeZone: TIMEZONE });
+            const toStartOfDay = (date)=> new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const today = () => toStartOfDay(new Date(new Date().toLocaleString('en-US', { timeZone: TIMEZONE })));
+            const parseISODate = iso => { const [y,m,d]=iso.split('-').map(Number); return new Date(y, m-1, d); };
+            const addDays = (date, days)=>{ const d=new Date(date); d.setDate(d.getDate()+days); return d; };
+            const isSameDay = (a,b)=> a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+            const round2 = v => Math.round(v*100)/100;
+            const inPauseCDI = (d)=>{
+                if (!CDI_PAUSE) return false;
+                const s = parseISODate(CDI_PAUSE.start), e = parseISODate(CDI_PAUSE.end);
+                return d>=s && d<=e;
+            };
+            const getAsOf = () => today();
+
+            function calculaSaldosEAudita(){
+                const asOf = getAsOf();
+                const limite = CAL_INCLUDE_TODAY ? addDays(asOf,1) : asOf;
+
+                const d1 = parseISODate(depositoCDI.data);
+                const principalCDI = depositoCDI.valor;
+                let saldoCDI = principalCDI;
+                const rendimentosDiariosCDI = [];
+
+                if (d1 < limite){
+                    const start = CAL_INTEREST_ON_DEPOSIT_DAY ? d1 : addDays(d1,1);
+                    let saldoAnterior = principalCDI;
+                    for (let d = new Date(start); d < limite; d = addDays(d,1)){
+                        let rend = 0;
+                        if (!inPauseCDI(d)){
+                            rend = saldoAnterior * TAXA_DIARIA;
+                            if (CAL_ROUND_DAILY) rend = round2(rend);
+                        }
+                        if (rend>0 || !inPauseCDI(d)) rendimentosDiariosCDI.push({ data: new Date(d), valor: rend });
+                        saldoAnterior += rend;
+                    }
+                    saldoCDI = saldoAnterior;
+                }
+                const rendimentoAcumCDI = saldoCDI - principalCDI;
+
+                const principalCDB = depositosCDB.reduce((s,d)=>s + d.valor, 0);
+                const ordenados = depositosCDB.map(d=>({ data: parseISODate(d.data), valor: d.valor, detalhe:d.detalhe }))
+                    .sort((a,b)=> a.data - b.data);
+                const primeiraData = ordenados[0]?.data || limite;
+                const rendimentosDiariosCDB = [];
+                const saldos = [];
+                let pendentesProximoDia = [];
+
+                for (let d = new Date(primeiraData); d < limite; d = addDays(d,1)){
+                    if (pendentesProximoDia.length){
+                        saldos.push(...pendentesProximoDia.map(v=>({saldo:v})));
+                        pendentesProximoDia = [];
+                    }
+                    const doDia = ordenados.filter(x=> isSameDay(x.data,d));
+                    if (doDia.length){
+                        saldos.push({ saldo: doDia[0].valor });
+                        if (CDB_FIRST_DEPOSIT_ACCRUES_ONLY){
+                            for (let k=1;k<doDia.length;k++) pendentesProximoDia.push(doDia[k].valor);
+                        } else {
+                            for (let k=1;k<doDia.length;k++) saldos.push({ saldo: doDia[k].valor });
+                        }
+                    }
+                    let rendDia = 0;
+                    for (const s of saldos){
+                        let r = s.saldo * TAXA_DIARIA;
+                        if (CAL_ROUND_DAILY) r = round2(r);
+                        s.saldo += r;
+                        rendDia += r;
+                    }
+                    if (saldos.length>0) rendimentosDiariosCDB.push({ data: new Date(d), valor: rendDia });
+                }
+
+                const saldoCDB = saldos.reduce((acc,s)=>acc + s.saldo, 0);
+                const rendimentoAcumCDB = saldoCDB - principalCDB;
+
+                let acumulado = 0;
+                const extratoDepositosCDB = ordenados.map(d=>{
+                    acumulado += d.valor;
+                    return { data: d.data, detalhe: d.detalhe, deposito: d.valor, total: acumulado };
+                });
+
+                const extratoDepositoCDI = [{ data: d1, detalhe: depositoCDI.detalhe, deposito: principalCDI }];
+
+                return {
+                    asOf, saldoCDB, rendimentoAcumCDB, saldoCDI, rendimentoAcumCDI,
+                    extratoDepositosCDB, extratoDepositoCDI, rendimentosDiariosCDB, rendimentosDiariosCDI
+                };
+            }
+
+            function render(){
+                const r = calculaSaldosEAudita();
+                const selectedUser = document.getElementById('userSelect').value;
+                const ts = r.asOf.toLocaleDateString('pt-BR', { timeZone: TIMEZONE });
+                document.getElementById('lastUpdate').textContent = `Calculado até ${ts}`;
+
+                const cards = document.querySelectorAll('.card');
+                if (selectedUser === 'andre') {
+                    document.getElementById('cardTotal').textContent = fmtBRL(r.saldoCDB);
+                    document.getElementById('cardRendimentoTotal').textContent = fmtBRL(r.rendimentoAcumCDB);
+                    document.getElementById('cardCDB').textContent = fmtBRL(r.saldoCDB);
+                    document.getElementById('cardCDBRend').textContent = fmtBRL(r.rendimentoAcumCDB);
+                    cards[0].style.display = 'block'; cards[1].style.display = 'block';
+                    cards[2].style.display = 'block'; cards[3].style.display = 'block';
+                    cards[4].style.display = 'none'; cards[5].style.display = 'none';
+                } else {
+                    document.getElementById('cardTotal').textContent = fmtBRL(r.saldoCDI);
+                    document.getElementById('cardRendimentoTotal').textContent = fmtBRL(r.rendimentoAcumCDI);
+                    document.getElementById('cardCDI').textContent = fmtBRL(r.saldoCDI);
+                    document.getElementById('cardCDIRend').textContent = fmtBRL(r.rendimentoAcumCDI);
+                    cards[2].style.display = 'none'; cards[3].style.display = 'none';
+                    cards[4].style.display = 'block'; cards[5].style.display = 'block';
+                }
+
+                const linhas = [];
+                for (const x of r.extratoDepositosCDB){
+                    linhas.push({ tipo:'deposito', aplicacao:'CDB', data:x.data, titulo:'Depósitos', detalhe:x.detalhe, valor:x.deposito, extra:`Total acumulado: ${fmtBRL(x.total)}` });
+                }
+                for (const x of r.extratoDepositoCDI){
+                    linhas.push({ tipo:'deposito', aplicacao:'CDI', data:x.data, titulo:'Depósitos', detalhe:x.detalhe, valor:x.deposito, extra:null });
+                }
+                for (const x of r.rendimentosDiariosCDB){
+                    linhas.push({ tipo:'rendCDB', aplicacao:'CDB', data:x.data, titulo:'Rendimento CDB', detalhe:'Rendimento diário', valor:x.valor, extra:null });
+                }
+                for (const x of r.rendimentosDiariosCDI){
+                    linhas.push({ tipo:'rendCDI', aplicacao:'CDI', data:x.data, titulo:'Rendimento CDI', detalhe:'Rendimento diário', valor:x.valor, extra:null });
+                }
+
+                linhas.sort((a,b)=> b.data - a.data);
+
+                const tipoSel = document.getElementById('tipo').value;
+                const ativo = document.querySelector('.chip.active')?.dataset.range || 'all';
+                const busca = document.getElementById('busca').value.trim().toLowerCase();
+                const asOf = r.asOf;
+                const limiteDias = (ativo==='all')? Infinity : parseInt(ativo,10);
+                const inicio = (limiteDias===Infinity)? new Date(0) : addDays(asOf, -limiteDias);
+
+                const filtradas = linhas.filter(l => {
+                    if (selectedUser === 'andre' && l.aplicacao !== 'CDB') return false;
+                    if (selectedUser === 'lindaura' && l.aplicacao !== 'CDI') return false;
+                    if (tipoSel !== 'todos' && l.tipo !== tipoSel) return false;
+                    if (l.data > asOf) return false;
+                    if (l.data < inicio) return false;
+                    if (busca){
+                        const hay = `${l.titulo} ${l.detalhe??''} ${l.aplicacao}`.toLowerCase();
+                        if (!hay.includes(busca)) return false;
+                    }
+                    return true;
+                });
+
+                const cont = document.getElementById('extrato');
+                cont.innerHTML = '';
+                for (const l of filtradas){
+                    const row = document.createElement('div');
+                    row.className = 'row';
+                    const d = document.createElement('div');
+                    d.innerHTML = `<div>${l.titulo}</div><div class="kind">${fmtDate(l.data)} • ${l.detalhe||l.aplicacao}</div>`;
+                    const k = document.createElement('div');
+                    k.textContent = fmtDate(l.data);
+                    const v = document.createElement('div');
+                    v.className = 'amount';
+                    v.textContent = fmtBRL(l.valor);
+                    row.append(d, k, v);
+                    cont.appendChild(row);
+                }
+            }
+
+            document.getElementById('btnRefresh').addEventListener('click', render);
+            document.getElementById('btnExit').addEventListener('click', showLogin);
+            document.getElementById('userSelect').addEventListener('change', render);
+            document.getElementById('tipo').addEventListener('change', render);
+            document.getElementById('busca').addEventListener('input', render);
+            document.querySelectorAll('.chip').forEach(chip => {
+                chip.addEventListener('click', ()=>{
+                    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    render();
+                });
+            });
+
+            render();
+        }
+    </script>
+</body>
+</html>
