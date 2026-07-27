@@ -299,7 +299,11 @@
         // ====== APP ======
         function initApp(){
             const BASE_TAXA_DIARIA = 0.0002381;
-            let TAXA_DIARIA = BASE_TAXA_DIARIA;
+            // Reajuste contratual: 1,005% a.m. a partir de 01/04/2026 (retroativo à vigência e daqui pra frente).
+            // Convertido para taxa diária na mesma convenção do motor (juros compostos, 365 dias corridos).
+            const REAJUSTE_VIGENCIA = '2026-04-01';
+            const REAJUSTE_TAXA_MENSAL = 0.01005;
+            const REAJUSTE_TAXA_DIARIA = Math.pow(1 + REAJUSTE_TAXA_MENSAL, 12/365) - 1;
             const TIMEZONE = 'America/Sao_Paulo';
 
             const CAL_INCLUDE_TODAY = false;
@@ -342,6 +346,8 @@
                 return d>=s && d<=e;
             };
             const getAsOf = () => today();
+            const vigenciaReajuste = parseISODate(REAJUSTE_VIGENCIA);
+            const taxaDoDia = (d) => d >= vigenciaReajuste ? REAJUSTE_TAXA_DIARIA : BASE_TAXA_DIARIA;
 
             function calculaSaldosEAudita(){
                 const asOf = getAsOf();
@@ -358,7 +364,7 @@
                     for (let d = new Date(start); d < limite; d = addDays(d,1)){
                         let rend = 0;
                         if (!inPauseCDI(d)){
-                            rend = saldoAnterior * TAXA_DIARIA;
+                            rend = saldoAnterior * taxaDoDia(d);
                             if (CAL_ROUND_DAILY) rend = round2(rend);
                         }
                         if (rend>0 || !inPauseCDI(d)) rendimentosDiariosCDI.push({ data: new Date(d), valor: rend });
@@ -392,7 +398,7 @@
                     }
                     let rendDia = 0;
                     for (const s of saldos){
-                        let r = s.saldo * TAXA_DIARIA;
+                        let r = s.saldo * taxaDoDia(d);
                         if (CAL_ROUND_DAILY) r = round2(r);
                         s.saldo += r;
                         rendDia += r;
