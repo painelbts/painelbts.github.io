@@ -167,6 +167,7 @@
         .row:hover{background: rgba(255,255,255,.04)}
         .row .kind{font-size:12px; color:#c7d8ff; text-transform:uppercase; letter-spacing:.08em}
         .row .amount{justify-self:end; font-weight:900; color:#6dff9b}
+        .row .amount.neg{color:#ff8a80}
         .note{color:#c6d2ec; font-size:12px; margin-top:10px}
         footer{opacity:.8; text-align:center; font-size:12px; padding:30px 0 10px; color:#b8c7e8}
         .user-selector{margin: 16px 0}
@@ -247,6 +248,7 @@
                         <option value="deposito">Depósitos</option>
                         <option value="rendCDB">Rendimento CDB</option>
                         <option value="rendCDI">Rendimento CDI</option>
+                        <option value="saque">Saques</option>
                     </select>
                     <div style="display: flex; gap: 8px;">
                         <div class="chip active" data-range="all">Tudo</div>
@@ -314,6 +316,17 @@
 
             const depositoCDI = { data: '2024-09-02', valor: 213338.40, detalhe: 'Transferência RB' };
 
+            // Retiradas da conta CDI. O valor sai do saldo no início do dia da retirada
+            // (não rende naquele dia); os juros seguintes correm sobre o saldo já reduzido.
+            const saquesCDI = [
+                { data: '2026-09-25', valor: 12000.00, detalhe: 'Retirada' },
+                { data: '2026-11-18', valor: 50000.00, detalhe: 'Retirada' },
+                { data: '2026-11-19', valor: 50000.00, detalhe: 'Retirada' },
+                { data: '2026-11-20', valor: 50000.00, detalhe: 'Retirada' },
+                { data: '2026-11-21', valor: 17799.99, detalhe: 'Retirada' },
+                { data: '2026-11-22', valor: 200.00, detalhe: 'Retirada' }
+            ];
+
             const depositosCDB = [
                 { data: '2022-05-17', valor: 100000.00, detalhe: 'Transferência CEX' },
                 { data: '2022-05-18', valor: 70000.00, detalhe: 'Transferência CEX' },
@@ -357,11 +370,20 @@
                 const principalCDI = depositoCDI.valor;
                 let saldoCDI = principalCDI;
                 const rendimentosDiariosCDI = [];
+                const saquesOrdenados = saquesCDI.map(s=>({ data: parseISODate(s.data), valor: s.valor, detalhe: s.detalhe }))
+                    .sort((a,b)=> a.data - b.data);
+                const extratoSaquesCDI = [];
 
                 if (d1 < limite){
                     const start = CAL_INTEREST_ON_DEPOSIT_DAY ? d1 : addDays(d1,1);
                     let saldoAnterior = principalCDI;
                     for (let d = new Date(start); d < limite; d = addDays(d,1)){
+                        for (const s of saquesOrdenados){
+                            if (isSameDay(s.data, d)){
+                                saldoAnterior = round2(saldoAnterior - s.valor);
+                                extratoSaquesCDI.push(s);
+                            }
+                        }
                         let rend = 0;
                         if (!inPauseCDI(d)){
                             rend = saldoAnterior * taxaDoDia(d);
@@ -372,7 +394,16 @@
                     }
                     saldoCDI = saldoAnterior;
                 }
-                const rendimentoAcumCDI = saldoCDI - principalCDI;
+                // Retiradas feitas hoje (o loop de juros para antes de hoje) também saem do saldo.
+                for (const s of saquesOrdenados){
+                    if (s.data >= limite && s.data <= asOf && s.data >= d1){
+                        saldoCDI = round2(saldoCDI - s.valor);
+                        extratoSaquesCDI.push(s);
+                    }
+                }
+                const totalSaquesCDI = extratoSaquesCDI.reduce((acc,s)=>acc + s.valor, 0);
+                // Rendimento = saldo atual + o que já foi retirado - o que foi depositado.
+                const rendimentoAcumCDI = round2(saldoCDI + totalSaquesCDI - principalCDI);
 
                 const principalCDB = depositosCDB.reduce((s,d)=>s + d.valor, 0);
                 const ordenados = depositosCDB.map(d=>({ data: parseISODate(d.data), valor: d.valor, detalhe:d.detalhe }))
@@ -419,7 +450,7 @@
 
                 return {
                     asOf, saldoCDB, rendimentoAcumCDB, saldoCDI, rendimentoAcumCDI,
-                    extratoDepositosCDB, extratoDepositoCDI, rendimentosDiariosCDB, rendimentosDiariosCDI
+                    extratoDepositosCDB, extratoDepositoCDI, extratoSaquesCDI, rendimentosDiariosCDB, rendimentosDiariosCDI
                 };
             }
 
@@ -453,6 +484,9 @@
                 }
                 for (const x of r.extratoDepositoCDI){
                     linhas.push({ tipo:'deposito', aplicacao:'CDI', data:x.data, titulo:'Depósitos', detalhe:x.detalhe, valor:x.deposito, extra:null });
+                }
+                for (const x of r.extratoSaquesCDI){
+                    linhas.push({ tipo:'saque', aplicacao:'CDI', data:x.data, titulo:'Retirada', detalhe:x.detalhe, valor:-x.valor, extra:null });
                 }
                 for (const x of r.rendimentosDiariosCDB){
                     linhas.push({ tipo:'rendCDB', aplicacao:'CDB', data:x.data, titulo:'Rendimento CDB', detalhe:'Rendimento diário', valor:x.valor, extra:null });
@@ -494,6 +528,7 @@
                     k.textContent = fmtDate(l.data);
                     const v = document.createElement('div');
                     v.className = 'amount';
+                    v.className = l.valor < 0 ? 'amount neg' : 'amount';
                     v.textContent = fmtBRL(l.valor);
                     row.append(d, k, v);
                     cont.appendChild(row);
